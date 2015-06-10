@@ -51,7 +51,7 @@ end
 
 %% SVM Takahashi
 
-%% labels videos
+%% labels and features videos
 
 pos = label_all(:,1)>=6.33333;
 neg = label_all(:,1)<3.66667;
@@ -73,12 +73,12 @@ labels = repmat(labels, [32,1]);
 % labels = labels';
 % labels = repmat(labels, [32,1]);
 
-%% SVM one-against-one
-
 % features
 features = [EEGfeatures GSRfeatures];
 
 N = length(labels);
+
+%% SVM one-against-one
 
 % split training/testing sets
 [trainIdx testIdx] = crossvalind('HoldOut', labels, 1/3);
@@ -110,11 +110,6 @@ fprintf('Confusion Matrix:\n'), disp(cmat)
 
 %% SVM one-against-all
 
-% features
-features = [EEGfeatures GSRfeatures];
-
-N = length(labels);
-
 itrain = sort(randsample(N,round(N*0.7))); 
 itest = setdiff(1:N,itrain)';
 
@@ -122,4 +117,18 @@ smvStructs = Allsvm(features(itrain,:),labels(itrain),3);
 disp('entrenamiento listo');
 p = predictSVM(smvStructs,features(itest,:));
 fprintf('\nTraining Set Accuracy: %f\n', mean(double(p == labels(itest))) * 100);
-[C,order] = confusionmat(double(labels(itest)),p)
+[C,order] = confusionmat(double(labels(itest)),p);
+
+%% SVM one-against-all one-leave-out
+pred = zeros(N,1);
+for i = 1:N
+    itrain = 1:N;
+    itrain(i) = [];
+    itest = i;
+    smvStructs = Allsvm(features(itrain,:),labels(itrain),3);
+    p = predictSVM(smvStructs,features(itest,:));
+    pred(i,1) = mean(double(p == labels(itest))) * 100;
+    display([num2str(i) ': ' num2str(pred(i,1)) ' - ' num2str(mean(pred))]);
+end
+
+res = mean(pred);
